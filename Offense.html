@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lab learning dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 1rem;
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow: auto;
+    }
+    main { padding: 1.25rem 1.5rem 3rem; max-width: 900px; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; font-weight: 600; }
+    .banner {
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .banner strong { color: var(--warn); }
+    nav button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.65rem;
+      margin-bottom: 0.25rem;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    nav button:hover { background: #21262d; }
+    nav button.active {
+      border-color: var(--border);
+      background: #21262d;
+      color: var(--accent);
+    }
+    nav .group {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 1rem 0 0.35rem 0.35rem;
+    }
+    h2 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    p.lead { color: var(--muted); margin: 0 0 1rem; font-size: 0.95rem; }
+    .step {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      background: var(--panel);
+    }
+    .step h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .step input[type="checkbox"] {
+      margin-top: 0.2rem;
+      accent-color: var(--ok);
+    }
+    .cmd {
+      position: relative;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.65rem 3.25rem 0.65rem 0.75rem;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .copy {
+      position: absolute;
+      top: 0.35rem;
+      right: 0.35rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #21262d;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .copy:hover { border-color: var(--accent); color: var(--accent); }
+    ul.hints { margin: 0.5rem 0 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.9rem; }
+    .progress-bar {
+      height: 6px;
+      background: #21262d;
+      border-radius: 3px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+    .progress-bar span {
+      display: block;
+      height: 100%;
+      background: var(--ok);
+      width: 0%;
+      transition: width 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <h1>Lab learning dashboard</h1>
+      <div class="banner">
+        <strong>Authorized practice only.</strong> Use only on systems and networks you own or have explicit written permission to test. This page does not scan or attack anything; it is a study companion with placeholders like <code>TARGET_IP</code>.
+      </div>
+      <div class="progress-bar" title="Overall progress"><span id="progressFill"></span></div>
+      <nav id="nav" aria-label="Modules"></nav>
+    </aside>
+    <main id="content"></main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "labDashProgress.v1";
+
+    const modules = [
+      {
+        id: "intro",
+        group: "Basics",
+        title: "Setup & mindset",
+        lead: "Environment and safety before any technical steps.",
+        steps: [
+          { title: "Separate lab machine or VM", body: "Use a dedicated attack VM (e.g. Kali/Parrot) and lab targets on an isolated network or provider VPN. Never point tooling at unknown IPs.", cmds: [] },
+          { title: "Note-taking template", body: "For each target: scope, IPs, open ports, services/versions, creds found, exploits tried, evidence paths.", cmds: ["# Example heading\n## Target: LAB_NAME\n### Ports\n\n### Findings\n"] },
+          { title: "Legal checklist", body: "Written authorization, scope boundaries, no production data exfiltration unless in scope, stop if you hit out-of-scope systems.", cmds: [] }
+        ]
+      },
+      {
+        id: "linux-cli",
+        group: "Basics",
+        title: "Linux CLI baby steps",
+        lead: "Same skills as early THM Linux rooms: navigation and reading files.",
+        steps: [
+          { title: "Navigation", body: "pwd, ls -la, cd. Understand absolute vs relative paths.", cmds: ["pwd", "ls -la", "cd /tmp && pwd"] },
+          { title: "Reading & searching", body: "cat, less, head, tail, grep -r for quick triage.", cmds: ["grep -rni 'password' /path/to/dir 2>/dev/null | head"] },
+          { title: "Processes & users", body: "whoami, id, ps aux, sudo -l if applicable.", cmds: ["whoami && id", "ps aux --sort=-%mem | head"] }
+        ]
+      },
+      {
+        id: "recon",
+        group: "Enumeration",
+        title: "Network reconnaissance",
+        lead: "Discovery and service identification-always replace placeholders with your lab IP.",
+        steps: [
+          { title: "Host discovery", body: "Confirm host is up; adjust scan type to lab policy.", cmds: ["ping -c 2 TARGET_IP   # Linux", "ping -n 2 TARGET_IP   # Windows cmd"] },
+          { title: "Port scan (common)", body: "Default scripts and version detection; noisy on real networks-fine in your lab.", cmds: ["nmap -sC -sV -oA nmap_initial TARGET_IP"] },
+          { title: "Full TCP (slow)", body: "Use when initial scan misses odd ports.", cmds: ["nmap -p- -sC -sV -T4 -oA nmap_alltcp TARGET_IP"] },
+          { title: "UDP spot-check", body: "Often skipped; SNMP/DNS/etc. on CTFs.", cmds: ["nmap -sU --top-ports 50 TARGET_IP"] }
+        ]
+      },
+      {
+        id: "web",
+        group: "Web",
+        title: "Web application basics",
+        lead: "Maps to introductory web rooms: map surface, then test carefully in scope.",
+        steps: [
+          { title: "Tech fingerprint", body: "Headers, cookies, Wappalyzer-class hints.", cmds: ["curl -sI https://TARGET_HOST/"] },
+          { title: "Content discovery", body: "Use wordlists against your lab app only.", cmds: ["gobuster dir -u http://TARGET_IP/ -w /usr/share/wordlists/dirb/common.txt -t 40"] },
+          { title: "Parameter testing mindset", body: "Track every form and API parameter; test for authz bugs and injection only where allowed.", cmds: ["# Burp/ZAP: scope to TARGET_HOST only"] }
+        ]
+      },
+      {
+        id: "smb",
+        group: "Network services",
+        title: "SMB / Windows-ish services",
+        lead: "Common CTF and internal lab patterns; respect corporate policies outside your lab.",
+        steps: [
+          { title: "Null session / share enum (lab)", body: "Many modern systems block this; still useful on intentionally vulnerable boxes.", cmds: ["smbclient -L //TARGET_IP -N", "enum4linux -a TARGET_IP"] },
+          { title: "rpcclient (if exposed)", body: "Enumerate users when lab allows.", cmds: ["rpcclient -U '' -N TARGET_IP"] }
+        ]
+      },
+      {
+        id: "privesc-linux",
+        group: "Privilege escalation",
+        title: "Linux privilege escalation",
+        lead: "Post-exploitation on a shell you already have in the lab-checklists, not auto-exploits.",
+        steps: [
+          { title: "System context", body: "Kernel, distro, sudo, cron, SUID, capabilities.", cmds: ["uname -a", "cat /etc/os-release 2>/dev/null", "sudo -l"] },
+          { title: "SUID quick find", body: "Review binaries manually; avoid running untrusted exploit code from the internet.", cmds: ["find / -perm -4000 -type f 2>/dev/null | head -50"] },
+          { title: "LinPEAS-style (optional)", body: "Run only on lab targets; review output critically.", cmds: ["# ./linpeas.sh  (download only from trusted source, lab only)"] }
+        ]
+      },
+      {
+        id: "privesc-win",
+        group: "Privilege escalation",
+        title: "Windows privilege escalation",
+        lead: "Enumeration first; many techniques need specific misconfigurations.",
+        steps: [
+          { title: "Who & privileges", body: "whoami /all, groups, privileges like SeImpersonate (lab context).", cmds: ["whoami /all"] },
+          { title: "Services & unquoted paths", body: "Learn the theory in a dedicated room; verify in lab before exploitation.", cmds: ["wmic service get name,pathname,startmode 2>nul"] }
+        ]
+      },
+      {
+        id: "ad-intro",
+        group: "Active Directory",
+        title: "Active Directory (intro concepts)",
+        lead: "Real AD labs need a domain environment (THM AttackBox, HTB Academy, or homelab). This section is conceptual ordering only.",
+        steps: [
+          { title: "Identity vs traditional local users", body: "Users, computers, groups, OUs; Kerberos vs NTLM at a high level.", cmds: [] },
+          { title: "BloodHound (authorized lab)", body: "Collectors ingest data you are allowed to have; graph shows attack paths.", cmds: ["# SharpHound / bloodhound-python - only in-scope domain"] },
+          { title: "Credential hygiene", body: "Practice rotation and detection in blue-team rooms in parallel.", cmds: [] }
+        ]
+      },
+      {
+        id: "reporting",
+        group: "Professional",
+        title: "Reporting & wrap-up",
+        lead: "Matches capstone expectations: clear narrative and reproducible steps.",
+        steps: [
+          { title: "Executive summary", body: "Risk in business terms, not just CVE numbers.", cmds: [] },
+          { title: "Technical appendix", body: "Commands, versions, screenshots with timestamps, evidence hashes if required.", cmds: [] },
+          { title: "Remediation", body: "Actionable fixes and verification steps.", cmds: [] }
+        ]
+      }
+    ];
+
+    function loadProgress() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveProgress(p) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+    }
+
+    let progress = loadProgress();
+    let activeId = modules[0].id;
+
+    function stepKey(modId, idx) {
+      return modId + "::" + idx;
+    }
+
+    function countSteps() {
+      let total = 0, done = 0;
+      modules.forEach((m) => {
+        m.steps.forEach((_, i) => {
+          total++;
+          if (progress[stepKey(m.id, i)]) done++;
+        });
+      });
+      return { total, done };
+    }
+
+    function updateProgressBar() {
+      const { total, done } = countSteps();
+      const pct = total ? (done / total) * 100 : 0;
+      document.getElementById("progressFill").style.width = pct + "%";
+    }
+
+    function renderNav() {
+      const nav = document.getElementById("nav");
+      nav.innerHTML = "";
+      let lastGroup = "";
+      modules.forEach((m) => {
+        if (m.group !== lastGroup) {
+          const g = document.createElement("div");
+          g.className = "group";
+          g.textContent = m.group;
+          nav.appendChild(g);
+          lastGroup = m.group;
+        }
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = m.title;
+        b.className = m.id === activeId ? "active" : "";
+        b.addEventListener("click", () => {
+          activeId = m.id;
+          renderNav();
+          renderContent();
+        });
+        nav.appendChild(b);
+      });
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        const o = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = o; }, 1200);
+      });
+    }
+
+    function renderContent() {
+      const mod = modules.find((m) => m.id === activeId);
+      const el = document.getElementById("content");
+      if (!mod) return;
+
+      const frag = document.createDocumentFragment();
+      const h2 = document.createElement("h2");
+      h2.textContent = mod.title;
+      frag.appendChild(h2);
+      const lead = document.createElement("p");
+      lead.className = "lead";
+      lead.textContent = mod.lead;
+      frag.appendChild(lead);
+
+      mod.steps.forEach((s, idx) => {
+        const sk = stepKey(mod.id, idx);
+        const wrap = document.createElement("div");
+        wrap.className = "step";
+
+        const h3 = document.createElement("h3");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!progress[sk];
+        cb.addEventListener("change", () => {
+          if (cb.checked) progress[sk] = true;
+          else delete progress[sk];
+          saveProgress(progress);
+          updateProgressBar();
+        });
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = s.title;
+        h3.appendChild(cb);
+        h3.appendChild(titleSpan);
+        wrap.appendChild(h3);
+
+        if (s.body) {
+          const p = document.createElement("p");
+          p.className = "lead";
+          p.style.marginBottom = "0.5rem";
+          p.textContent = s.body;
+          wrap.appendChild(p);
+        }
+
+        (s.cmds || []).forEach((cmd) => {
+          const preWrap = document.createElement("div");
+          preWrap.style.position = "relative";
+          preWrap.style.marginTop = "0.5rem";
+          const pre = document.createElement("div");
+          pre.className = "cmd";
+          pre.textContent = cmd;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "copy";
+          btn.textContent = "Copy";
+          btn.addEventListener("click", () => copyText(cmd, btn));
+          preWrap.appendChild(pre);
+          preWrap.appendChild(btn);
+          wrap.appendChild(preWrap);
+        });
+
+        frag.appendChild(wrap);
+      });
+
+      el.innerHTML = "";
+      el.appendChild(frag);
+    }
+
+    renderNav();
+    renderContent();
+    updateProgressBar();
+  </script>
+</body>
+</html>
